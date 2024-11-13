@@ -1,0 +1,45 @@
+type Book {
+  id: ID!
+  title: String!
+  author: Author
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type Author {
+  id: ID!
+  name: String!
+  books: [Book!]
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+scalar DateTime
+
+type Query {
+  books: [Book!]!
+  book(id: ID!): Book
+  authors: [Author!]!
+  author(id: ID!): Author
+}
+
+type Mutation {
+  createBook(input: CreateBookInput!): Book!
+  updateBook(id: ID!, input: UpdateBookInput!): Book!
+  deleteBook(id: ID!): Boolean!
+  CreateAuthor(input: CreateAuthorInput!): Author!
+}
+
+input CreateBookInput {
+  title: String!
+  authorId: ID!
+}
+
+input UpdateBookInput {
+  title: String!
+  authorId: ID!
+}
+
+input CreateAuthorInput {
+  name: String!
+}
