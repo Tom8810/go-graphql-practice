@@ -16,7 +16,7 @@ import (
 const defaultPort = "8080"
 
 func main() {
-	if err := getenv.Get(); err != nil {
+	if err := getenv.Get("./internal/env/.env"); err != nil {
 		fmt.Printf("cannnot read environmental variables")
 	}
 

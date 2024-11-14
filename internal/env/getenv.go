@@ -8,8 +8,9 @@ import (
 
 var MYSQL_USER, MYSQL_PASS, MYSQL_PORT, DB_NAME string
 
-func Get() error {
-	if err := godotenv.Load("./internal/env/.env"); err != nil {
+// 引数に.envファイルへのパスを指定する
+func Get(envpath string) error {
+	if err := godotenv.Load(envpath); err != nil {
 		return err
 	}
 

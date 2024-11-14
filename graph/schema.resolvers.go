@@ -6,17 +6,63 @@ package graph
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"gorm_practice1/graph/model"
 	database "gorm_practice1/internal/db"
 	gormModel "gorm_practice1/internal/model"
+	"strconv"
 
 	"gorm.io/gorm"
 )
 
 // CreateBook is the resolver for the createBook field.
 func (r *mutationResolver) CreateBook(ctx context.Context, input model.CreateBookInput) (*model.Book, error) {
-	panic(fmt.Errorf("not implemented: CreateBook - createBook"))
+	var modelbook *model.Book
+	
+	err := database.DB.Transaction(func(tx *gorm.DB) error {
+		var author gormModel.Author
+		if err := tx.First(&author, "id = ?", input.AuthorID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return fmt.Errorf("author not found: %s", input.AuthorID)
+			}
+		}
+
+		authorId, _ := strconv.Atoi(input.AuthorID)
+
+		var gormbook = &gormModel.Book{
+			Title: input.Title,
+			AuthorID: uint(authorId),
+			Author: &gormModel.Author{
+				ID: author.ID,
+				Name: author.Name,
+			},
+		}
+
+		if err := tx.Create(&gormbook).Error; err != nil {
+			return fmt.Errorf("cannot create book: %v", err)
+		}
+
+		modelbook = &model.Book{
+			ID: string(gormbook.ID),
+			Title: input.Title,
+			CreatedAt: gormbook.CreatedAt,
+			UpdatedAt: gormbook.UpdatedAt,
+			Author: &model.Author{
+				ID: string(author.ID),
+				Name: author.Name,
+				CreatedAt: author.CreatedAt,
+				UpdatedAt: author.UpdatedAt,
+			},
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return modelbook, nil
 }
 
 // UpdateBook is the resolver for the updateBook field.
