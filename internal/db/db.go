@@ -3,7 +3,9 @@ package database
 import (
 	"fmt"
 	getenv "gorm_practice1/internal/env"
-	gormModel "gorm_practice1/internal/model" // モデル定義が置かれているパッケージ
+	"gorm_practice1/internal/gen"
+
+	// gormModel "gorm_practice1/internal/model" // モデル定義が置かれているパッケージ
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -11,6 +13,11 @@ import (
 )
 
 var DB *gorm.DB
+
+func InitializeGen(db *gorm.DB) {
+    // genのクエリオブジェクトを初期化
+    gen.SetDefault(db)
+}
 
 // Connect はデータベースとの接続を確立し、オートマイグレーションを実行します
 func Connect() error {
@@ -28,14 +35,7 @@ func Connect() error {
     // グローバル変数にデータベース接続を設定
     DB = db
 
-    // オートマイグレーションの実行
-    err = db.AutoMigrate(
-        &gormModel.Book{}, // モデルをここに追加
-        &gormModel.Author{},
-    )
-    if err != nil {
-        return fmt.Errorf("failed to auto-migrate: %v", err)
-    }
+    InitializeGen(db)
 
     return nil
 }

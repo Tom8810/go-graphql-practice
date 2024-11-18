@@ -9,7 +9,7 @@ import (
 type Author struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
-	Books     []*Book   `json:"books,omitempty"`
+	Books     []*Book   `json:"books"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
@@ -17,7 +17,7 @@ type Author struct {
 type Book struct {
 	ID        string    `json:"id"`
 	Title     string    `json:"title"`
-	Author    *Author   `json:"author,omitempty"`
+	Author    *Author   `json:"author"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }

@@ -6,63 +6,53 @@ package graph
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"gorm_practice1/graph/model"
-	database "gorm_practice1/internal/db"
-	gormModel "gorm_practice1/internal/model"
+	"gorm_practice1/internal/gen"
+	genmodel "gorm_practice1/internal/model"
 	"strconv"
-
-	"gorm.io/gorm"
 )
 
 // CreateBook is the resolver for the createBook field.
 func (r *mutationResolver) CreateBook(ctx context.Context, input model.CreateBookInput) (*model.Book, error) {
-	var modelbook *model.Book
-	
-	err := database.DB.Transaction(func(tx *gorm.DB) error {
-		var author gormModel.Author
-		if err := tx.First(&author, "id = ?", input.AuthorID).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return fmt.Errorf("author not found: %s", input.AuthorID)
-			}
+	var gqlbook *model.Book
+	err := gen.Q.Transaction(func(tx *gen.Query) error {
+		id, err := strconv.ParseInt(input.AuthorID, 10, 64)
+		if err != nil {
+			return fmt.Errorf("createBook invalid Authorid: %v", err)
 		}
-
-		authorId, _ := strconv.Atoi(input.AuthorID)
-
-		var gormbook = &gormModel.Book{
+		user, err := gen.Q.Author.Where(gen.Q.Author.ID.Eq(id)).First() 
+		if err != nil {
+			return fmt.Errorf("createBook author not found: %v", err)
+		}
+		newBook := &genmodel.Book{
 			Title: input.Title,
-			AuthorID: uint(authorId),
-			Author: &gormModel.Author{
-				ID: author.ID,
-				Name: author.Name,
-			},
+			AuthorID: id,
+		}
+		if err = gen.Q.Book.Create(newBook); err != nil {
+			return fmt.Errorf("createbook failed to create book: %v", err)
 		}
 
-		if err := tx.Create(&gormbook).Error; err != nil {
-			return fmt.Errorf("cannot create book: %v", err)
-		}
-
-		modelbook = &model.Book{
-			ID: string(gormbook.ID),
-			Title: input.Title,
-			CreatedAt: gormbook.CreatedAt,
-			UpdatedAt: gormbook.UpdatedAt,
+		gqlbook = &model.Book{
+			ID: string(newBook.ID),
+			Title: newBook.Title,
+			CreatedAt: newBook.CreatedAt,
+			UpdatedAt: newBook.UpdatedAt,
 			Author: &model.Author{
-				ID: string(author.ID),
-				Name: author.Name,
-				CreatedAt: author.CreatedAt,
-				UpdatedAt: author.UpdatedAt,
+				ID: string(user.ID),
+				Name: user.Name,
+				CreatedAt: user.CreatedAt,
+				UpdatedAt: user.UpdatedAt,
 			},
 		}
 		return nil
 	})
-
+	
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("createBook transaction not completed: %v", err)
 	}
 
-	return modelbook, nil
+	return gqlbook, nil
 }
 
 // UpdateBook is the resolver for the updateBook field.
@@ -82,34 +72,27 @@ func (r *mutationResolver) CreateAuthor(ctx context.Context, input model.CreateA
 
 // Books is the resolver for the books field.
 func (r *queryResolver) Books(ctx context.Context) ([]*model.Book, error) {
-	var books []gormModel.Book
-	result := database.DB.Preload("Author").Find(&books) // 取得とbooksへのデータマッピング
-	if result.Error != nil {
-		if result.Error == gorm.ErrRecordNotFound {
-			return nil, fmt.Errorf("book not found: %v", result.Error)
-		}
-		return nil, fmt.Errorf("failed to fetch book: %v", result.Error)
+	books, err := gen.Q.Book.WithContext(ctx).Preload(gen.Book.Author).Find()
+	if err != nil {
+		return nil, fmt.Errorf("books: %v", err)
 	}
-	var modelbooks []*model.Book
+	var gqlBooks []*model.Book
 	for _, b := range books {
-		modelbook := model.Book{
-			ID:    string(b.ID),
-			Title: b.Title,
+		gqlBook := &model.Book{
+			ID:        string(b.ID),
+			Title:     b.Title,
 			CreatedAt: b.CreatedAt,
-			UpdatedAt: b.UpdatedAt,
-		}
-		if b.Author != nil {
-			modelbook.Author = &model.Author{
-				ID:   string(b.AuthorID),
-				Name: b.Author.Name,
+			UpdatedAt: b.CreatedAt,
+			Author: &model.Author{
+				ID:        string(b.Author.ID),
+				Name:      b.Author.Name,
 				CreatedAt: b.Author.CreatedAt,
 				UpdatedAt: b.Author.UpdatedAt,
-			}
+			},
 		}
-		modelbooks = append(modelbooks, &modelbook)
+		gqlBooks = append(gqlBooks, gqlBook)
 	}
-
-	return modelbooks, nil
+	return gqlBooks, nil
 }
 
 // Book is the resolver for the book field.
