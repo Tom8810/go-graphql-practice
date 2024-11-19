@@ -1,0 +1,2 @@
+ALTER TABLE authors
+  MODIFY COLUMN name VARCHAR(200);
